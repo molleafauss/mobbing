@@ -1,7 +1,8 @@
 package main
 
 import (
-	"fmt"
+	"log"
+	"os"
 	"time"
 )
 
@@ -37,7 +38,7 @@ func make_grid(rows int, cols int) [][]bool {
 	return grid
 }
 
-func (self Grid) new_generation() bool {
+func (self *Grid) new_generation() bool {
 	var changed bool
 	changes := 0
 	next_gen := make_grid(self.Rows, self.Cols)
@@ -51,7 +52,7 @@ func (self Grid) new_generation() bool {
 	}
 	self.Cells = next_gen
 	self.Generation += 1
-	fmt.Printf("Generation %v, changes found: %v", self.Generation, changes)
+	log.Printf("Generation %v, changes found: %v", self.Generation, changes)
 	return changes > 0
 }
 
@@ -61,6 +62,7 @@ func (self Grid) new_generation() bool {
 func (self Grid) cell_tick(row int, col int) (bool, bool) {
 	// count the number of alive cells between row -1/+1 and cols -1/+1
 	current_status := self.Cells[row][col]
+	var new_status bool
 	row_start := row - 1
 	if row_start < 0 {
 		row_start = 0
@@ -81,22 +83,27 @@ func (self Grid) cell_tick(row int, col int) (bool, bool) {
 	for r := row_start; r <= row_end; r++ {
 		for c := col_start; c <= col_end; c++ {
 			// don't count myself
-			if r != row && c != col && self.Cells[r][c] {
+			if r == row && c == col {
+				continue
+			}
+			if self.Cells[r][c] {
 				alive++
 			}
 		}
 	}
-	// Any live cell with two or three neighbors survives.
-	new_status := (current_status && (alive < 2 || alive > 3))
-	// Any dead cell with three live neighbors becomes a live cell
-	new_status = new_status || (!current_status && alive == 3)
-
+	if current_status {
+		// Any live cell with two or three neighbors survives.
+		new_status = alive == 2 || alive == 3
+	} else {
+		// Any dead cell with three live neighbors becomes a live cell
+		new_status = alive == 3
+	}
+	// log.Printf("Cell %v,%v: (alive %v) %v -> %v (%v)", row, col, alive, current_status, new_status, new_status != current_status)
 	return new_status, new_status != current_status
 }
 
 func (self Grid) Display() {
-	fmt.Printf("Generation: %v", self.Generation)
-	fmt.Println()
+	log.Printf("Generation: %v", self.Generation)
 	for r := 0; r < self.Rows; r++ {
 		rowText := ""
 		for c := 0; c < self.Cols; c++ {
@@ -106,16 +113,18 @@ func (self Grid) Display() {
 				rowText += ". "
 			}
 		}
-		fmt.Println(rowText)
+		log.Println(rowText)
 	}
-	fmt.Println()
+	log.Println()
 }
 
 func main() {
+	log.SetOutput(os.Stdout)
 	grid := create_grid(4, 8)
 	grid.set_alive(2, 5)
 	grid.set_alive(3, 4)
 	grid.set_alive(3, 5)
+	grid.Display()
 
 	changes := true
 	for changes {
